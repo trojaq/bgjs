@@ -1,0 +1,25 @@
+{
+  "name": "bgjs",
+  "version": "1.0.0",
+  "description": "Javascript based card and board game engine",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trojaq/bgjs.git"
+  },
+  "author": "Jakub Trojanek",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/trojaq/bgjs/issues"
+  },
+  "homepage": "https://github.com/trojaq/bgjs#readme",
+  "dependencies": {
+    "events": "^1.1.1",
+    "express": "^4.16.2",
+    "express-generator": "^4.15.5",
+    "socket.io": "^2.0.4"
+  }
+}
