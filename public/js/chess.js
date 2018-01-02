@@ -13,7 +13,7 @@ var ChessBoard = function() {
         y = 0;
         for (_j = 1; _j <= 8; _j++,y += 60) {
           this.chess["" + letters[_i] + _j] = {
-		    name:"" + letters[_i] + _j,
+		    name: "" + letters[_i] + _j,
             top: y,
             left: x,
             color: color[colorIndex]
@@ -30,25 +30,19 @@ var ChessBoard = function() {
 
 ChessBoard.prototype = {
 	init : function(stage, objects) {
-			stage.width(480);
-			stage.height(480);
-			var staticLayer = new Kinetic.Layer();
-			var dynamicLayer = new Kinetic.Layer();
+			var staticLayer = new createjs.Container();
+			var dynamicLayer = new createjs.Container();
 		  var field, name, object;
 		
 		  for (name in this.chess) {
 			console.log("Field: " + name);
 			field = this.chess[name];
-			field.draw = new Kinetic.Rect({
-				x : field.top,
-				y : field.left,
-				width: 60,
-				height: 60,
-				fill: field.color,
-				stroke: 'black',
-				strokeWidth: 1
-				});
-			staticLayer.add(field.draw);
+			field.draw = new createjs.Shape();
+			field.draw.x = field.top;
+			field.draw.y = field.left;
+			field.draw.graphics.beginStroke('black').beginFill(field.color).drawRect(0, 0, 60, 60);
+
+			staticLayer.addChild(field.draw);
 		  }
 		  for(name in objects) {
 		     var pion = objects[name];
@@ -56,8 +50,8 @@ ChessBoard.prototype = {
 			
 			
 		  }
-		  stage.add(staticLayer);
-		  stage.add(dynamicLayer);
+		  stage.addChild(staticLayer);
+		  stage.addChild(dynamicLayer);
 	  }
 
 
