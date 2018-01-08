@@ -18,6 +18,12 @@
             this.triggers = [];
             //this list will hold the triggers activated by uninterrupted event chain
             this.fired = [];
+            //this wam will hold interactor stacks per player
+            this.interactors = {}
+            //the list of players
+            this.players = [];
+            //the active player index
+            this.activePlayerIdx = 0;
             //the go to integer for constructing unique game object names
             this.nextId = 1;
         }
@@ -85,6 +91,75 @@
             }
         }
 
+        //record and execute a number of steps for a player
+        //stepIterator function accepts gameModel and player as parameters
+        //stepIterator function provides consecutive steps in the form of
+        //{ value:
+        //  {  filter: filter function for clickable objects,
+        //     times: how many times the object should be clicked
+        //  },
+        //  done: whether there is no more steps (value is undefined)
+        //}
+
+        interact(player, name, stepIterator) {
+            if (!this.interactors[player]) {
+                this.interactors[player] = [];
+            }
+            this.interactors[player].push(
+                {
+                    name: `${player}_${name}_${this.nextId++}`,
+                    player: player,
+                    gm: this,
+                    steps: stepIterator(this, player),
+                    currentStep: 0,
+                    selected: [],
+                    triggers: [],
+                    modifiers: []
+
+                }
+            );
+            this.nextStep(player);
+
+
+        }
+
+
+        //next step for an active iterator
+        //next step will be pushed with AllEventsResolved by the global mechanism
+        nextStep(player) {
+            const interactor = this.interactors.player.pop();
+            const step = interactor.steps.next(interactor);
+            if(!step.done) {
+                //push interactor back on stack
+                this.interactors.push(interactor);
+                const baseName = interactor.name + "_step" + interactor.currentStep;
+                interactor.modifiers.push(
+                    modifier(baseName + "_modifier", (view, gm) => view.selectable = true));
+                interactor.triggers.push(
+                    trigger(baseName + "_Trigger",
+                        (ev, gm) => ev.event === 'Click' && step.value.filter(gm.objects[ev.data.clicked]),
+                        (ev, gm) => {
+                            //add the clicked object to the list
+                            interactor.selected.push(ev.data.clicked);
+                            //if last one, clean up this step's triggers and modifiers
+                            if (interactor.selected.length >= step.value.times) {
+                                for (let modifier of interactor.modifiers) {
+                                    gm.removeModifier(modifier.name);
+                                }
+                                for (let trigger of interactor.triggers) {
+                                    gm.removeTrigger(trigger.name);
+                                }
+                                //clear the interactor
+                                interactor.modifiers.splice(0, interactor.modifiers.length);
+                                interactor.triggers.splice(0, interactor.triggers.length);
+                            }
+                        }
+                    ));
+            }
+            //else interactor is off the stack, this chain is over
+
+        }
+
         //update view of the object so it reflects latest changes and stack of modifiers
         modify(gameObject) {
             var newView, oldView;
@@ -126,6 +201,28 @@
             gameObject.__view = newView;
             return console.log("New VIew " + (JSON.stringify(newView)));
         };
+
+        trigger(name, triggered, fire) {
+            const trigger = new Trigger(name, triggered, fire);
+            this.triggers.push(trigger);
+            return trigger;
+        }
+
+        //removes and returns named trigger if exist
+        removeTrigger(name) {
+            return this.triggers.splice(this.triggers.find(tr => tr.name === name),1)[0];
+        }
+
+        modifier(name, modificator) {
+            const modifier = new Modifier(name, modificator);
+            this.modifiers.push(modifier);
+            return modifier;
+        }
+
+        //removes and returns named modifier if exist
+        removeModifier(name) {
+            return this.modifiers.splice(this.modifiers.find(tr => tr.name === name),1)[0];
+        }
 
         createGameObject(name, properties) {
             //get unique name
