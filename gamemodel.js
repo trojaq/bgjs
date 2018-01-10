@@ -105,6 +105,7 @@
             if (!this.interactors[player]) {
                 this.interactors[player] = [];
             }
+            console.log(`Starting interaction ${player}, ${name}`);
             this.interactors[player].push(
                 {
                     name: `${player}_${name}_${this.nextId++}`,
@@ -119,8 +120,6 @@
                 }
             );
             this.nextStep(player);
-
-
         }
 
 
@@ -132,6 +131,8 @@
             if(!step.done) {
                 //push interactor back on stack
                 this.interactors.push(interactor);
+                console.log(`Next step for ${interactor.name}`);
+
                 const baseName = interactor.name + "_step" + interactor.currentStep;
                 interactor.modifiers.push(
                     modifier(baseName + "_modifier", (view, gm) => view.selectable = true));
@@ -140,9 +141,11 @@
                         (ev, gm) => ev.event === 'Click' && step.value.filter(gm.objects[ev.data.clicked]),
                         (ev, gm) => {
                             //add the clicked object to the list
+                            console.log(`Adding ${ev.data.clicked} to selected`);
                             interactor.selected.push(ev.data.clicked);
                             //if last one, clean up this step's triggers and modifiers
                             if (interactor.selected.length >= step.value.times) {
+                                console.log("All required objects selected for this step")
                                 for (let modifier of interactor.modifiers) {
                                     gm.removeModifier(modifier.name);
                                 }
