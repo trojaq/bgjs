@@ -7,7 +7,7 @@ const app = express()
 app.use(express.static('public'))
 
 app.listen(80)
-
+clicks = [{clicked: "o_1"}, {clicked: "o2_2"}, {clicked: "o2_2"}, {clicked: "o_1"}];
 
 gm = new core.GameModel("chess");
 mod = new core.Modifier('Modifier', function(props, model) {
@@ -21,14 +21,34 @@ trig = new core.Trigger('Trigger', function(event, model) {
     }
     return false
 }, function(event, model) {
-    model.objects.o_1.data = 3
-    console.log("Fired")
+    if(clicks.length > 0) {
+        gm.postEvent("click", clicks.pop());
+    }
 });
 
 
 
 
-gm.init({modifiers: [mod], triggers:[trig]})
+gm.init({modifiers: [], triggers:[trig]})
 go = gm.createGameObject("o", {"data": 1});
+go2 = gm.createGameObject("o2", {"data": 2});
 
-gm.postEvent("Event1", {data1: "data1", data2:"data2"});
+const move = function*(gamemodel, player) {
+    let interactor = yield {
+        filter: object => object.baseName === "o2",
+        times: 1,
+        txt: 'Select source'
+    }
+    console.log("Step " + interactor.currentStep);
+    console.log("Selected " + interactor.selected);
+    interactor = yield {
+        filter: object => object.data,
+        times: 2,
+        txt: 'Select target'
+    }
+    console.log("Step " + interactor.currentStep);
+    console.log("Selected " + interactor.selected);
+    gamemodel.objects[interactor.selected[0]].data = 7;
+}(gm, "player");
+gm.interact("player", "move", move);
+

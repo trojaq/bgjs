@@ -36,6 +36,12 @@
             for (let trigger of data.triggers) {
                 this.triggers.push(trigger);
             }
+            // if(data.phases) {
+            //     this.phases = data.phases;
+            //     this.nextPhase = data.startingPhase;
+            //     this.currentPhase = -1;
+            //     this.nextPhase()
+            // }
         }
 
         //pushes new event to the event queue
@@ -111,7 +117,7 @@
                     name: `${player}_${name}_${this.nextId++}`,
                     player: player,
                     gm: this,
-                    steps: stepIterator(this, player),
+                    steps: stepIterator,
                     currentStep: 0,
                     selected: [],
                     triggers: [],
@@ -126,19 +132,20 @@
         //next step for an active iterator
         //next step will be pushed with AllEventsResolved by the global mechanism
         nextStep(player) {
-            const interactor = this.interactors.player.pop();
+            const interactor = this.interactors[player].pop();
+            interactor.currentStep = interactor.currentStep + 1;
             const step = interactor.steps.next(interactor);
             if(!step.done) {
                 //push interactor back on stack
-                this.interactors.push(interactor);
-                console.log(`Next step for ${interactor.name}`);
+                this.interactors[player].push(interactor);
+                console.log(`Next step for ${interactor.name}: ${step.value.txt}`);
 
                 const baseName = interactor.name + "_step" + interactor.currentStep;
                 interactor.modifiers.push(
-                    modifier(baseName + "_modifier", (view, gm) => view.selectable = true));
+                    this.modifier(baseName + "_modifier", (view, gm) => {if(step.value.filter(view)) view.selectable = true}));
                 interactor.triggers.push(
-                    trigger(baseName + "_Trigger",
-                        (ev, gm) => ev.event === 'Click' && step.value.filter(gm.objects[ev.data.clicked]),
+                    this.trigger(baseName + "_Trigger",
+                        (ev, gm) => ev.event === 'click' && step.value.filter(gm.objects[ev.data.clicked]),
                         (ev, gm) => {
                             //add the clicked object to the list
                             console.log(`Adding ${ev.data.clicked} to selected`);
@@ -156,11 +163,16 @@
                                 interactor.modifiers.splice(0, interactor.modifiers.length);
                                 interactor.triggers.splice(0, interactor.triggers.length);
                             }
+                            //schedule next step
+                            gm.nextStep(interactor.player);
                         }
                     ));
             }
             //else interactor is off the stack, this chain is over
-
+            //we have added or removed modifiers, refresh views now
+            for(let name in this.objects) {
+                this.modify(this.objects[name]);
+            }
         }
 
         //update view of the object so it reflects latest changes and stack of modifiers
@@ -169,7 +181,8 @@
 
             //store old view for comparison for PropertyChanged events
             oldView = gameObject.__view;
-            console.log("Old VIew " + (JSON.stringify(oldView)));
+            //console.log("Old VIew " + (JSON.stringify(oldView)));
+
             //init new view with base properties
             newView = gameObject.__copy();
             //modify base view with active modifiers
@@ -202,7 +215,7 @@
             }
             //set the view to updated one
             gameObject.__view = newView;
-            return console.log("New VIew " + (JSON.stringify(newView)));
+            //console.log("New VIew " + (JSON.stringify(newView)));
         };
 
         trigger(name, triggered, fire) {
@@ -213,7 +226,7 @@
 
         //removes and returns named trigger if exist
         removeTrigger(name) {
-            return this.triggers.splice(this.triggers.find(tr => tr.name === name),1)[0];
+            return this.triggers.splice(this.triggers.findIndex(tr => tr.name === name),1)[0];
         }
 
         modifier(name, modificator) {
@@ -224,7 +237,7 @@
 
         //removes and returns named modifier if exist
         removeModifier(name) {
-            return this.modifiers.splice(this.modifiers.find(tr => tr.name === name),1)[0];
+            return this.modifiers.splice(this.modifiers.findIndex(tr => tr.name === name),1)[0];
         }
 
         createGameObject(name, properties) {
@@ -232,7 +245,7 @@
             const goName = name + "_" + this.nextId;
             const go = new GameObject(goName, this);
             //store non-unique name for potential usage
-            go.baseName = name;
+            properties.baseName = name;
             //increase unique id
             this.nextId++;
             //copy provided properties to created object
