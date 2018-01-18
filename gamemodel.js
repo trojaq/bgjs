@@ -26,6 +26,8 @@
             this.activePlayerIdx = 0;
             //the go to integer for constructing unique game object names
             this.nextId = 1;
+            //helper for keeping track of game phases
+            this.phasing = {};
         }
 
         //initialize model with modifiers and triggers
@@ -36,12 +38,60 @@
             for (let trigger of data.triggers) {
                 this.triggers.push(trigger);
             }
-            // if(data.phases) {
-            //     this.phases = data.phases;
-            //     this.nextPhase = data.startingPhase;
-            //     this.currentPhase = -1;
-            //     this.nextPhase()
-            // }
+            if(data.phases) {
+                this.phasing.phases = data.phases;
+                this.phasing.nextPhase = data.startingPhase;
+                this.phasing.currentPhase = -1;
+                this.trigger("PhaseTrigger",
+                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
+                    (ev, gm) => this.phasing.generator.next(),
+                    )
+                this.nextPhase();
+
+            }
+        }
+
+        waitsForPlayer() {
+            for (let player of this.players) {
+                if(this.interactors[player] && this.interactors[player].length > 0) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        nextPhase() {
+            const phasing = this.phasing;
+            phasing.currentPhase = phasing.nextPhase;
+            phasing.nextPhase = (phasing.nextPhase +1) % phasing.phases.length;
+            const phase = phasing.phases[phasing.currentPhase];
+            const phaseName = phase.name;
+            const phaseAction = phase.action;
+            phasing.generator = function*(gm) {
+                gm.postEvent("PhaseStart", {phase:phaseName});
+                yield;
+                phaseAction(gm);
+                yield;
+                gm.postEvent("PhaseEnd", {phase:phaseName});
+                yield
+                gm.nextPhase();
+            }(this);
+            const addEndPhaseTrigger = function() {
+                this.oneTimeTrigger("Phase:" + phaseName + ":EndTrigger",
+                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
+                    (ev, gm) => {
+                        this.postEvent("PhaseEnd", {phase:phaseName});
+                    });
+            };
+            if(phaseAction) {
+                this.oneTimeTrigger("Phase:" + phaseName + ":ActionTrigger",
+                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
+                    (ev, gm) => {
+                        phaseAction(gm);
+                    });
+            }
+
+
         }
 
         //pushes new event to the event queue
@@ -222,6 +272,14 @@
             const trigger = new Trigger(name, triggered, fire);
             this.triggers.push(trigger);
             return trigger;
+        }
+
+        //self removing trigger
+        oneTimeTrigger(name, triggered, fire) {
+            this.trigger(name, triggered, (event, gameModel) => {
+                fire(event, gameModel);
+                this.removeTrigger(name);
+            })
         }
 
         //removes and returns named trigger if exist
