@@ -27,13 +27,7 @@ trig = new core.Trigger('Trigger', function(event, model) {
 });
 
 
-
-
-gm.init({modifiers: [], triggers:[trig]})
-go = gm.createGameObject("o", {"data": 1});
-go2 = gm.createGameObject("o2", {"data": 2});
-
-const move = function*(gamemodel, player) {
+const move = function*(gamemodel) {
     let interactor = yield {
         filter: object => object.baseName === "o2",
         times: 1,
@@ -49,6 +43,18 @@ const move = function*(gamemodel, player) {
     console.log("Step " + interactor.currentStep);
     console.log("Selected " + interactor.selected);
     gamemodel.objects[interactor.selected[0]].data = 7;
-}(gm, "player");
+};
+
+
+gm.init({modifiers: [], triggers:[trig], phases: [
+        {name:"Moving phase", action: move}
+
+
+
+
+    ]})
+go = gm.createGameObject("o", {"data": 1});
+go2 = gm.createGameObject("o2", {"data": 2});
+
 gm.interact("player", "move", move);
 

@@ -46,8 +46,12 @@
                     (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
                     (ev, gm) => this.phasing.generator.next(),
                     )
-                this.nextPhase();
+            }
+        }
 
+        start() {
+            if(data.phases) {
+                this.__nextPhase();
             }
         }
 
@@ -60,38 +64,37 @@
             return false;
         }
 
-        nextPhase() {
+        __nextPhase() {
             const phasing = this.phasing;
+            //switch current phase index
             phasing.currentPhase = phasing.nextPhase;
+            //prepare for next phase may be changed by the events
             phasing.nextPhase = (phasing.nextPhase +1) % phasing.phases.length;
+            if(phasing.nextPhase === 0) {
+                console.log("Starting next turn");
+            }
             const phase = phasing.phases[phasing.currentPhase];
             const phaseName = phase.name;
+            //description can be used to display somewhere on gui
+            phasing.description = phaseName;
+            //action should be uninitialized generator function which happens between phase start and end events
             const phaseAction = phase.action;
+            //use of generators to step through the phase
             phasing.generator = function*(gm) {
+                console.log("Starting ${phaseName}");
                 gm.postEvent("PhaseStart", {phase:phaseName});
                 yield;
-                phaseAction(gm);
-                yield;
+                //the actual phase logic happens here
+                yield* phaseAction(gm);
+
+                console.log("Finishing ${phaseName}");
                 gm.postEvent("PhaseEnd", {phase:phaseName});
-                yield
-                gm.nextPhase();
+                yield;
+                console.log("${phaseName} finished");
+                gm.__nextPhase();
             }(this);
-            const addEndPhaseTrigger = function() {
-                this.oneTimeTrigger("Phase:" + phaseName + ":EndTrigger",
-                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
-                    (ev, gm) => {
-                        this.postEvent("PhaseEnd", {phase:phaseName});
-                    });
-            };
-            if(phaseAction) {
-                this.oneTimeTrigger("Phase:" + phaseName + ":ActionTrigger",
-                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
-                    (ev, gm) => {
-                        phaseAction(gm);
-                    });
-            }
-
-
+            //kick off the phase
+            phasing.generator.next();
         }
 
         //pushes new event to the event queue
@@ -100,11 +103,11 @@
             console.log(` ${event} with data ${JSON.stringify(data)} posted`);
             //since now the event queue is not empty, schedule processing of the next event
             // (not necessary the one posted) on next tick
-            process.nextTick(() => this.nextEvent());
+            process.nextTick(() => this.__nextEvent());
         }
 
         //processes next event on the queue
-        nextEvent() {
+        __nextEvent() {
             //take first event from the queue
             const event = this.events.shift();
             console.log(`processing ${event.event} with data ${JSON.stringify(event.data)}`);
@@ -175,13 +178,13 @@
 
                 }
             );
-            this.nextStep(player);
+            this.__nextStep(player);
         }
 
 
         //next step for an active iterator
         //next step will be pushed with AllEventsResolved by the global mechanism
-        nextStep(player) {
+        __nextStep(player) {
             const interactor = this.interactors[player].pop();
             interactor.currentStep = interactor.currentStep + 1;
             const step = interactor.steps.next(interactor);
@@ -214,7 +217,7 @@
                                 interactor.triggers.splice(0, interactor.triggers.length);
                             }
                             //schedule next step
-                            gm.nextStep(interactor.player);
+                            gm.__nextStep(interactor.player);
                         }
                     ));
             }
