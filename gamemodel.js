@@ -38,19 +38,23 @@
             for (let trigger of data.triggers) {
                 this.triggers.push(trigger);
             }
+            for(let player of data.players) {
+                this.players.push(player);
+                this.interactors[player] = [];
+            }
             if(data.phases) {
                 this.phasing.phases = data.phases;
                 this.phasing.nextPhase = data.startingPhase;
                 this.phasing.currentPhase = -1;
                 this.trigger("PhaseTrigger",
-                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.interactors.waitsForPlayer(),
+                    (ev, gm) => ev.event === 'AllEventsResolved' && !this.waitsForPlayer(),
                     (ev, gm) => this.phasing.generator.next(),
                     )
             }
         }
 
         start() {
-            if(data.phases) {
+            if(this.phasing.phases) {
                 this.__nextPhase();
             }
         }
@@ -81,16 +85,16 @@
             const phaseAction = phase.action;
             //use of generators to step through the phase
             phasing.generator = function*(gm) {
-                console.log("Starting ${phaseName}");
+                console.log(`Starting ${phaseName}`);
                 gm.postEvent("PhaseStart", {phase:phaseName});
                 yield;
                 //the actual phase logic happens here
                 yield* phaseAction(gm);
 
-                console.log("Finishing ${phaseName}");
+                console.log(`Finishing ${phaseName}`);
                 gm.postEvent("PhaseEnd", {phase:phaseName});
                 yield;
-                console.log("${phaseName} finished");
+                console.log(`${phaseName} finished`);
                 gm.__nextPhase();
             }(this);
             //kick off the phase
@@ -170,7 +174,7 @@
                     name: `${player}_${name}_${this.nextId++}`,
                     player: player,
                     gm: this,
-                    steps: stepIterator,
+                    steps: stepIterator(this),
                     currentStep: 0,
                     selected: [],
                     triggers: [],

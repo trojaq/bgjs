@@ -1,4 +1,5 @@
 var core = require('./gamemodel.js')
+var dual = require('./duality.js')
 
 const express = require('express')
 const app = express()
@@ -46,15 +47,15 @@ const move = function*(gamemodel) {
 };
 
 
-gm.init({modifiers: [], triggers:[trig], phases: [
-        {name:"Moving phase", action: move}
+gm.init({players:["player"],modifiers: [], triggers:[trig], phases: [
+        {name:"Moving phase", action: function*(gm) {
+                gm.interact("player", "move", move);
+                yield;
 
-
-
-
-    ]})
+            }}
+        ], startingPhase:0})
 go = gm.createGameObject("o", {"data": 1});
 go2 = gm.createGameObject("o2", {"data": 2});
 
-gm.interact("player", "move", move);
+gm.start();
 
