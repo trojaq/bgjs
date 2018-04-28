@@ -1,13 +1,27 @@
-var core = require('./gamemodel.js')
-var dual = require('./duality.js')
-
-const express = require('express')
-const app = express()
+var core = require('./gamemodel.js');
+var dual = require('./duality.js');
 
 
-app.use(express.static('public'))
+const express = require('express');
+const app = express();
 
-app.listen(80)
+
+app.use(express.static('public'));
+
+
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+
+io.on('connection', socket =>
+  {
+    console.log("connected");
+    socket.on('click', data => console.log(data));
+  }
+);
+http.listen(80, function(){
+  console.log('listening on *:80');
+});
+
 clicks = [{clicked: "o_1"}, {clicked: "o2_2"}, {clicked: "o2_2"}, {clicked: "o_1"}];
 
 gm = new core.GameModel("chess");
@@ -57,5 +71,4 @@ gm.init({players:["player"],modifiers: [], triggers:[trig], phases: [
 go = gm.createGameObject("o", {"data": 1});
 go2 = gm.createGameObject("o2", {"data": 2});
 
-gm.start();
-
+//gm.start();
