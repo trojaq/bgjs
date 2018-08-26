@@ -5,6 +5,8 @@
     class GameModel {
 
         constructor(name) {
+           console.log("Creating base Game Model");
+
             //unique name for this instance of the game
             this.name = name;
             //event queue which drives the engine
@@ -62,9 +64,11 @@
         waitsForPlayer() {
             for (let player of this.players) {
                 if(this.interactors[player] && this.interactors[player].length > 0) {
+                    console.log("Waiting for player action");
                     return true;
                 }
             }
+            console.log("No player action expected, proceed");
             return false;
         }
 
@@ -140,7 +144,7 @@
                 //this may post new PropetyChanged events on the queue
                 for(let name in this.objects) {
                 	this.modify(this.objects[name]);
-				}
+				        }
 				//if we have no more events to process, post "allEventsResolved" event
                 //to notify waiting for interaction or ending of phase
                 //this may post new events on the queue
@@ -196,7 +200,8 @@
                 //push interactor back on stack
                 this.interactors[player].push(interactor);
                 console.log(`Next step for ${interactor.name}: ${step.value.txt}`);
-
+                //clear previous selections
+                interactor.selected = [];
                 const baseName = interactor.name + "_step" + interactor.currentStep;
                 interactor.modifiers.push(
                     this.modifier(baseName + "_modifier", (view, gm) => {if(step.value.filter(view)) view.selectable = true}));
@@ -410,5 +415,3 @@
 
     exports.Trigger = Trigger;
 }).call(this);
-
-
